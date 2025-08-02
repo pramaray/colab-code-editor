@@ -6,6 +6,7 @@ import Editor from "./pages/Editor";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Landing from "./pages/LandingPage";
+import RoomDashboard from "./pages/RoomDashboard";
 import './index.css';  // or './App.css' if that's where you wrote it
 
 function App() {
@@ -13,8 +14,10 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Landing />} />
-        <Route path="/Home" element={
+        <Route path="/H" element={
         <PrivateRoute> {<Home />}</PrivateRoute>}/>
+        <Route path="/Home" element={
+        <PrivateRoute> {<RoomDashboard />}</PrivateRoute>}/>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route

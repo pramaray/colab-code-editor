@@ -9,6 +9,8 @@ const userSchema = new mongoose.Schema({
   username: { type: String },
   provider: { type: String, enum: ["local", "google", "github"], default: "local" },
   oauthId: { type: String },
+  rooms: [{ type: mongoose.Schema.Types.ObjectId, ref: "CodeRoom" }]
+
 });
 
 userSchema.pre("save", async function (next) {

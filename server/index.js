@@ -7,11 +7,12 @@ const { Server } = require("socket.io");
 const mongoose = require("mongoose");
 const CodeRoom = require("./models/CodeRoom");
 const Message = require("./models/Message");
-const messageRoutes = require("./routes/messages");
 require("dotenv").config();
 const session = require("express-session");
 const passport = require("passport");
 require("./config/passport"); // ⬅️ this file you'll create in /server/passport.js
+
+const cookieParser = require("cookie-parser");
 
 
 
@@ -27,6 +28,7 @@ mongoose.connect(process.env.MONGO_URI, {
 const app = express();
 const server = http.createServer(app);
 app.use(express.json());
+app.use(cookieParser());
 app.use(cors({
   origin: "http://localhost:5173",
   methods: ["GET", "POST"],
@@ -56,8 +58,13 @@ app.get("/auth/github/callback", passport.authenticate("github", {
 
 const authRoutes = require("./routes/auth");
 app.use("/api/auth", authRoutes);
-
+const roomRoutes = require("./routes/rooms");
+app.use("/api/rooms", roomRoutes);
+const messageRoutes = require("./routes/messages");
 app.use("/api/messages", messageRoutes);
+const userRoutes = require("./routes/user");
+app.use("/api/user", userRoutes);
+
 const io = new Server(server, {
   cors: {
     origin: "http://localhost:5173",

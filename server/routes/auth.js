@@ -6,25 +6,38 @@ const User = require("../models/User");
 const passport = require("passport");
 const router = express.Router();
 
-router.get("/user", (req, res) => {
+router.get("/user", async (req, res) => {
   try {
-    
     const token = req.cookies.token || req.headers.authorization?.split(" ")[1];
 
     if (!token) return res.status(401).json({ error: "No token provided" });
 
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    jwt.verify(token, process.env.JWT_SECRET, async (err, decoded) => {
       if (err) {
         console.error("JWT verify error:", err);
         return res.status(403).json({ error: "Invalid token" });
       }
-      res.json(user);
+
+      try {
+        // Fetch actual user data from database using userId from JWT
+        const user = await User.findById(decoded.userId).select('-password');
+        if (!user) {
+          return res.status(404).json({ error: 'User not found' });
+        }
+        
+        console.log("Returning user data:", user);
+        res.json(user); // Returns actual user object with username, email, etc.
+      } catch (dbError) {
+        console.error("Database error:", dbError);
+        res.status(500).json({ error: "Database error" });
+      }
     });
   } catch (error) {
     console.error("Error in /user route:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
 
 router.post("/register", async (req, res) => {
   const { name, email, password } = req.body;
