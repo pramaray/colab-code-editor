@@ -1,78 +1,5 @@
-// // server/index.js
-// const express = require("express");
-// const http = require("http");
-// const cors = require("cors");
-// const { Server } = require("socket.io");
-// const CodeRoom = require("./models/CodeRoom"); // Import model
+//server/index.js
 
-// require("dotenv").config();
-// const mongoose = require("mongoose");
-
-// mongoose.connect(process.env.MONGO_URI, {
-//   useNewUrlParser: true,
-//   useUnifiedTopology: true,
-// }).then(() => console.log("✅ MongoDB connected"))
-//   .catch(err => console.error("❌ MongoDB connection error:", err));
-
-// const app = express();
-// const server = http.createServer(app);
-
-// app.use(cors({
-//   origin: "http://localhost:5173",
-//   methods: ["GET", "POST"]
-// }));
-
-// const io = new Server(server, {
-//   cors: {
-//     origin: "http://localhost:5173",
-//     methods: ["GET", "POST"]
-//   }
-// });
-
-// const usersInRoom = {};
-
-// io.on("connection", (socket) => {
-//   console.log("✅ New client connected:", socket.id);
-
-//   socket.on("join-room", async ({ roomId, username }) => {
-//   socket.join(roomId);
-//   if (!usersInRoom[roomId]) usersInRoom[roomId] = [];
-
-//     usersInRoom[roomId].push({ socketId: socket.id, username });
-
-//     io.to(roomId).emit("room-users", usersInRoom[roomId]);
-//   console.log(`📁 User ${username} joined room: ${roomId}`);
-
-//   // Fetch existing code and send to the user
-//   let room = await CodeRoom.findOne({ roomId });
-//   if (!room) {
-//     room = await CodeRoom.create({ roomId });
-//   }
-//   socket.emit("code-change", room.code);
-// });
-
-  
-//   socket.on("code-change", async ({ roomId, code }) => {
-//   // Broadcast to other users
-//   socket.to(roomId).emit("code-change", code);
-//   // Save to DB
-//   await CodeRoom.findOneAndUpdate({ roomId }, { code });
-// });
-
-
-//   socket.on("disconnect", () => {
-//     for (const roomId in usersInRoom) {
-//       usersInRoom[roomId] = usersInRoom[roomId].filter(user => user.socketId !== socket.id);
-//       io.to(roomId).emit("room-users", usersInRoom[roomId]);
-//     }
-//     console.log("❌ Client disconnected:", socket.id);
-//   });
-// });
-
-// server.listen(4000, () => {
-//   console.log("🚀 Server running on http://localhost:4000");
-// });
-// 
 const express = require("express");
 const http = require("http");
 const cors = require("cors");
@@ -81,8 +8,12 @@ const mongoose = require("mongoose");
 const CodeRoom = require("./models/CodeRoom");
 const Message = require("./models/Message");
 const messageRoutes = require("./routes/messages");
-
 require("dotenv").config();
+const session = require("express-session");
+const passport = require("passport");
+require("./config/passport"); // ⬅️ this file you'll create in /server/passport.js
+
+
 
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
@@ -90,20 +21,48 @@ mongoose.connect(process.env.MONGO_URI, {
 }).then(() => console.log("✅ MongoDB connected"))
   .catch(err => console.error("❌ MongoDB connection error:", err));
 
+
+
+
 const app = express();
 const server = http.createServer(app);
-
+app.use(express.json());
 app.use(cors({
   origin: "http://localhost:5173",
-  methods: ["GET", "POST"]
+  methods: ["GET", "POST"],
+  credentials: true
 }));
-app.use(express.json());
-app.use("/api/messages", messageRoutes);
 
+
+app.use(session({
+  secret: process.env.SESSION_SECRET || "supersecret",
+  resave: false,
+  saveUninitialized: true,
+}));
+app.use(passport.initialize());
+app.use(passport.session());
+// OAuth Routes
+app.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+app.get("/auth/google/callback", passport.authenticate("google", {
+  successRedirect: "http://localhost:5173/dashboard",
+  failureRedirect: "http://localhost:5173/login"
+}));
+
+app.get("/auth/github", passport.authenticate("github", { scope: ["user:email"] }));
+app.get("/auth/github/callback", passport.authenticate("github", {
+  successRedirect: "http://localhost:5173/dashboard",
+  failureRedirect: "http://localhost:5173/login"
+}));
+
+const authRoutes = require("./routes/auth");
+app.use("/api/auth", authRoutes);
+
+app.use("/api/messages", messageRoutes);
 const io = new Server(server, {
   cors: {
     origin: "http://localhost:5173",
-    methods: ["GET", "POST"]
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 
