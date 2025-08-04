@@ -210,8 +210,9 @@ const EditorPage = () => {
   
   // Get data from navigation state, fallback to URL params
   const { roomId, username } = location.state || {};
+  //console.log(name);
   const finalRoomId = roomId || paramRoomId;
-
+  const [roomName, setRoomName] = useState(""); // fallback to passed name if available
   const [users, setUsers] = useState([]);
   const [language, setLanguage] = useState("javascript");
   const [code, setCode] = useState("");
@@ -235,6 +236,19 @@ const EditorPage = () => {
     
     //console.log("Joined editor as:", username, "in room:", finalRoomId);
   }, [finalRoomId, username, navigate]);
+  useEffect(() => {
+  if (!roomName && finalRoomId) {
+    axios
+      .get(`http://localhost:4000/api/rooms/info/${finalRoomId}`)
+      .then((res) => {
+        setRoomName(res.data.name || "Unnamed Room");
+      })
+      .catch((err) => {
+        console.error("Failed to fetch room name:", err);
+        setRoomName("Unknown Room");
+      });
+  }
+}, [finalRoomId, roomName]);
 
   // Fetch existing messages from MongoDB
   useEffect(() => {
@@ -353,7 +367,7 @@ const EditorPage = () => {
       <div className="w-64 bg-gray-900 text-white p-4 flex-shrink-0">
         <div className="mb-4">
           <h2 className="text-lg font-bold mb-1">👥 Users in Room</h2>
-          <p className="text-xs text-gray-400">Room: {finalRoomId}</p>
+          <p className="text-xs text-gray-400">Room: {roomName}</p>
           <p className="text-xs text-gray-400">You: {username}</p>
         </div>
         
