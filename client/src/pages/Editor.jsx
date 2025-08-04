@@ -229,11 +229,11 @@ const EditorPage = () => {
     if (!finalRoomId || !username) {
       console.error("Missing room data:", { finalRoomId, username });
       alert("Invalid room access. Redirecting to dashboard.");
-      navigate("/dashboard");
+      navigate("/Home");
       return;
     }
     
-    console.log("Joined editor as:", username, "in room:", finalRoomId);
+    //console.log("Joined editor as:", username, "in room:", finalRoomId);
   }, [finalRoomId, username, navigate]);
 
   // Fetch existing messages from MongoDB
@@ -252,7 +252,7 @@ const EditorPage = () => {
   useEffect(() => {
     if (!finalRoomId || !username) return;
     
-    console.log("Connecting to socket with:", { finalRoomId, username });
+    //console.log("Connecting to socket with:", { finalRoomId, username });
     
     socketRef.current = io("http://localhost:4000");
 
@@ -261,7 +261,7 @@ const EditorPage = () => {
 
     // Listen for room users
     socketRef.current.on("room-users", (userList) => {
-      console.log("Room users updated:", userList);
+      //console.log("Room users updated:", userList);
       setUsers(userList);
     });
 

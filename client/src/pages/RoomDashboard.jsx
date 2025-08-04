@@ -140,17 +140,17 @@ const RoomDashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    console.log("=== AUTH STATE ===");
-    console.log("Loading:", loading);
-    console.log("Current user:", currentUser);
-    console.log("User keys:", currentUser ? Object.keys(currentUser) : "no user");
+    // console.log("=== AUTH STATE ===");
+    // console.log("Loading:", loading);
+    // console.log("Current user:", currentUser);
+    // console.log("User keys:", currentUser ? Object.keys(currentUser) : "no user");
 
     // Only fetch rooms if we have a user and not loading
     if (!loading && currentUser) {
       // Fetch user's rooms
       axios.get("http://localhost:4000/api/rooms/my", { withCredentials: true })
         .then((res) => {
-          console.log("Rooms fetched:", res.data);
+          //console.log("Rooms fetched:", res.data);
           setRooms(res.data);
         })
         .catch((err) => {
@@ -192,9 +192,9 @@ const RoomDashboard = () => {
     // Get username from currentUser - try multiple possible fields
     const username = currentUser?.username || currentUser?.name || currentUser?.email?.split('@')[0];
     
-    console.log("=== NAVIGATION DEBUG ===");
-    console.log("Current user:", currentUser);
-    console.log("Extracted username:", username);
+    // console.log("=== NAVIGATION DEBUG ===");
+    // console.log("Current user:", currentUser);
+    // console.log("Extracted username:", username);
     
     if (!username) {
       alert("User data not available. Please refresh and try again.");

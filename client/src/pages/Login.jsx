@@ -21,6 +21,7 @@ export default function Login() {
       });
       await fetchUser();
       navigate("/Home");
+
     } catch (err) {
       setError(err.response?.data?.error || "Login failed");
     }
