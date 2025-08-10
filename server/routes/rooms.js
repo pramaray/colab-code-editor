@@ -122,6 +122,21 @@ router.get("/info/:roomId", async (req, res) => {
   }
 });
 
+router.get("/:roomId/users", authenticate, async (req, res) => {
+  try {
+    const room = await CodeRoom.findOne({ roomId: req.params.roomId })
+      .populate("users", "username name email");
+    if (!room) return res.status(404).json({ error: "Room not found" });
 
+    res.json(room.users.map(u => ({
+      _id: u._id,
+      username: u.username || u.name || u.email,
+      active: false
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
 
 module.exports = router;

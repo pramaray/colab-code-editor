@@ -4,12 +4,13 @@ import Editor from "@monaco-editor/react";
 import { io } from "socket.io-client";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
+import {useAuth} from "../context/AuthContext"
 
 const EditorPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { roomId: paramRoomId } = useParams();
-  
+  const { currentUser } = useAuth();
   // Get data from navigation state, fallback to URL params
   const { roomId, username } = location.state || {};
   //console.log(name);
@@ -26,6 +27,32 @@ const EditorPage = () => {
   const codeRef = useRef("");
   const editorRef = useRef(null);
   const typingTimeouts = useRef({});
+  const [roomUsers, setRoomUsers] = useState([]);
+  useEffect(() => {
+  if (!finalRoomId || !username || !currentUser?._id) return; // ✅ Wait until user is ready
+  
+  socketRef.current = io("http://localhost:4000");
+  
+  socketRef.current.emit("join-room", { 
+    roomId: finalRoomId, 
+    username, 
+    userId: currentUser._id 
+  });
+
+  socketRef.current.on("room-users", (userList) => {
+    setUsers(userList);
+  });
+
+  return () => {
+    if (socketRef.current) socketRef.current.disconnect();
+  };
+}, [finalRoomId, username, currentUser]);
+  useEffect(() => {
+    if (!finalRoomId) return;
+    axios.get(`http://localhost:4000/api/rooms/${finalRoomId}/users`, { withCredentials: true })
+      .then(res => setRoomUsers(res.data))
+      .catch(err => console.error("Error fetching room members:", err));
+  }, [finalRoomId]);
 
   // Redirect if no proper room data
   useEffect(() => {
@@ -73,14 +100,16 @@ const EditorPage = () => {
     socketRef.current = io("http://localhost:4000");
 
     // Join the room
-    socketRef.current.emit("join-room", { roomId: finalRoomId, username });
+    //socketRef.current.emit("join-room", { roomId: finalRoomId, username });
+    socketRef.current.emit("join-room", { roomId: finalRoomId, username, userId: currentUser._id });
+
 
     // Listen for room users
-    socketRef.current.on("room-users", (userList) => {
-      //console.log("Room users updated:", userList);
-      setUsers(userList);
-    });
+  
 
+    socketRef.current.on("room-users", (updatedList) => {
+      setRoomUsers(updatedList); // direct replace — backend gives full list with active flags
+    });
     // Listen for code changes
     socketRef.current.on("code-change", (newCode) => {
       if (newCode !== codeRef.current) {
@@ -174,10 +203,13 @@ const EditorPage = () => {
         </div>
         
         <ul className="space-y-1 text-sm mb-6">
-          {users.length > 0 ? (
+
+          {Array.isArray(users) && users.length > 0 ? (
             users.map((u) => (
-              <li key={u.socketId} className="flex items-center">
-                <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+              <li key={u._id} className="flex items-center">
+                <span
+                  className={`w-2 h-2 rounded-full mr-2 ${u.active ? "bg-green-400" : "bg-red-400"}`}
+                ></span>
                 {u.username}
                 {typingUsers[u.username] && (
                   <span className="text-green-400 ml-1 text-xs">typing...</span>
@@ -185,8 +217,10 @@ const EditorPage = () => {
               </li>
             ))
           ) : (
-            <li className="text-gray-400 text-xs">No other users</li>
+            <li className="text-gray-400 text-xs">No users in this room</li>
           )}
+
+
         </ul>
 
         <div className="mt-6">

@@ -78,20 +78,39 @@ const usersInRoom = {};
 io.on("connection", (socket) => {
   console.log("✅ New client connected:", socket.id);
   
-  socket.on("join-room", async ({ roomId, username }) => {
+
+socket.on("join-room", async ({ roomId, username, userId }) => {
     socket.join(roomId);
     if (!usersInRoom[roomId]) usersInRoom[roomId] = [];
 
-    usersInRoom[roomId].push({ socketId: socket.id, username });
-    io.to(roomId).emit("room-users", usersInRoom[roomId]);
+    // Store both userId and username for active tracking
+    usersInRoom[roomId].push({ socketId: socket.id, username, userId });
+
+    // Fetch full room from DB with populated users
+    let room = await CodeRoom.findOne({ roomId }).populate("users", "username name email");
+    if (!room) {
+      room = await CodeRoom.create({ roomId, users: [userId] });
+      await room.populate("users", "username name email");
+    }
+
+    // Create active/inactive list based on _id
+    const activeUserIds = usersInRoom[roomId].map(u => u.userId?.toString());
+    const membersWithStatus = room.users.map(u => ({
+      _id: u._id,
+      username: u.username || u.name || u.email,
+      active: activeUserIds.includes(u._id.toString())
+    }));
+
+    // Send to all clients in room
+    io.to(roomId).emit("room-users", membersWithStatus);
     socket.to(roomId).emit("user-joined", username);
 
-    let room = await CodeRoom.findOne({ roomId });
-    if (!room) {
-      room = await CodeRoom.create({ roomId });
-    }
     socket.emit("code-change", room.code);
-  });
+});
+
+
+
+
 
   socket.on("code-change", async ({ roomId, code }) => {
     socket.to(roomId).emit("code-change", code);
@@ -111,17 +130,28 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("user-typing", { username });
   });
 
-  socket.on("disconnect", () => {
+  socket.on("disconnect", async () => {
     for (const roomId in usersInRoom) {
       const user = usersInRoom[roomId].find(u => u.socketId === socket.id);
       usersInRoom[roomId] = usersInRoom[roomId].filter(u => u.socketId !== socket.id);
-      io.to(roomId).emit("room-users", usersInRoom[roomId]);
+
+      // Update everyone with new active list (keep allUsers same)
+
+        let room = await CodeRoom.findOne({ roomId }).populate("users", "username name email");
+        const activeUserIds = usersInRoom[roomId].map(u => u.userId?.toString());
+        const membersWithStatus = room.users.map(u => ({
+          _id: u._id,
+          username: u.username || u.name || u.email,
+          active: activeUserIds.includes(u._id.toString())
+        }));
+        io.to(roomId).emit("room-users", membersWithStatus);
       if (user) {
         socket.to(roomId).emit("user-left", user.username);
       }
     }
     console.log("❌ Client disconnected:", socket.id);
   });
+
 });
 
 server.listen(4000, () => {
